@@ -15,6 +15,7 @@ export const blogRouter = new Hono<{
 }>();
 
 blogRouter.use("/*", async (c, next) => {
+    console.log("Verifying if the user is authorized.")
     // bearer + the token for auth
     const authHeader = c.req.header("authorization") || "";
     try {
@@ -95,16 +96,32 @@ blogRouter.put('/', async (c) => {
 
 // TODO: pagination needs to be implemented
 blogRouter.get('/bulk', async (c) => {
-    const body = await c.req.json(); 
+    console.log("Retrieving posts in bulk")
+    // const body = await c.req.json(); 
+    console.log("Setting the Prisma client")
     const prisma = new PrismaClient({
       datasourceUrl: c.env.DATABASE_URL,
     }).$extends(withAccelerate())
 
-    const blogs = await prisma.blog.findMany();
-
-    return c.json({
+    console.log("Querying the DB for bulk posts")
+    const blogs = await prisma.blog.findMany({
+        select:{
+            content: true,
+            title: true,
+            id: true,
+            author:{
+                select:{
+                    name: true
+                }
+            }
+        }
+    });
+    console.log(`Retrieved ${blogs.length} posts.`)
+    var a = c.json({
         blogs
     })
+    console.log(a)
+    return a;
 
 });
   
@@ -120,6 +137,15 @@ blogRouter.get('/:id', async (c) => {
             where:{
                 id: Number(id)
             },
+            select: {
+                title: true,
+                content: true,
+                author: {
+                    select: {
+                        name: true
+                    }
+                }
+            }
         })
         
         return c.json({
